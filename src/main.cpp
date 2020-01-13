@@ -14,18 +14,16 @@ using namespace std;
 int scanTime = 5; //In seconds
 BLEScan *pBLEScan;
 const string dronePrefix  = "Swing_";
-vector<BLEAdvertisedDevice> swingDevices;
+vector<BLEAdvertisedDevice> ads;
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
   void onResult(BLEAdvertisedDevice device)
   {
     string deviceName = device.getName();
-    if(deviceName.find(dronePrefix) == -1)
-    {
-      swingDevices.push_back(device);
-      return;
-    }    
+    if(deviceName.find(dronePrefix) == -1) return;
+        
+    ads.push_back(device);
     Serial.printf("Advertised Device: %s \n", device.toString().c_str());
   }
 
@@ -52,28 +50,29 @@ void findBleDevices() {
 }
 void cloneDrone() {
   Serial.println("cloneDrone()");
-  auto drone = swingDevices[0];
+  for(auto ad : ads) {
+    Serial.println(ad.getName().c_str());
+  }
   
-  BLEServer *pServer = BLEDevice::createServer();
-  auto pAdvertising = pServer->getAdvertising();
-  auto fakeDrone = new BLEAdvertisementData();
-  fakeDrone->setManufacturerData(drone.getManufacturerData());
-  fakeDrone->setServiceData(drone.getServiceDataUUID(), drone.getServiceData());
-  fakeDrone->setName("Fake Drone");  
-  pAdvertising->setAdvertisementData(*fakeDrone);
-  Serial.println("About to advertise...");
-  pAdvertising->start();
+  // BLEServer *pServer = BLEDevice::createServer();
+  // auto pAdvertising = pServer->getAdvertising();
+  // auto fakeDrone = new BLEAdvertisementData();
+  // fakeDrone->setManufacturerData(drone.getManufacturerData());
+  // fakeDrone->setServiceData(drone.getServiceDataUUID(), drone.getServiceData());
+  // fakeDrone->setName("Fake Drone");  
+  // pAdvertising->setAdvertisementData(*fakeDrone);
+  // Serial.println("About to advertise...");
+  // pAdvertising->start();
 }
 void loop()
 {
-  if(swingDevices.size() == 0) {
+  if(ads.size() == 0) {
     Serial.println("Scanning for devices...");
     return findBleDevices();
   }
-  
   Serial.printf("%s %d %s", 
                 "Found ",
-                swingDevices.size(),
+                ads.size(),
                 " Swing devices.");
   cloneDrone();
   delay(2000);
