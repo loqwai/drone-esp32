@@ -14,18 +14,31 @@ BLEClient* client;
 const string dronePrefix = "Swing_";
 vector<BLEAdvertisedDevice> drones;
 
-void readDrone(BLEClient &client)
-{ 
-  Serial.println("readDrone");
+void cloneService(BLEServer *server, BLERemoteService *remote){
+  BLEService *service = server->createService(remote->getUUID()); 
+  BLEAdvertising *ad = BLEDevice::getAdvertising();
+  ad->addServiceUUID(remote->getUUID());
+  ad->setScanResponse(true);
+  ad->setMinPreferred(0x06);  // functions that help with iPhone connections issue
+  ad->setMinPreferred(0x12); 
+  service->start();
+}
+
+void cloneDrone(BLEClient &client)
+{    
+  Serial.println("cloneDrone");
+  BLEServer *server = BLEDevice::createServer();
   auto services = client.getServices();
   Serial.println("read services");
   Serial.printf("Num services: %d",services->size());
 
   for (auto entry = services->begin(); entry != services->end(); entry++)
   {
-    auto service = entry->second;
+    auto service = entry->second;    
     Serial.printf("Found service: %s", service->getUUID().toString().c_str());
+    cloneService(server, service);
   }
+  BLEDevice::startAdvertising();
 }
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
@@ -97,7 +110,7 @@ void connectToDrone(BLEAdvertisedDevice &drone)
   // }
 }
  
-void cloneDrone(BLEAdvertisedDevice &drone)
+void startClone(BLEAdvertisedDevice &drone)
 {
   Serial.println("cloneDrone()");
   BLEAdvertising *fakeAd = BLEDevice::getAdvertising();
@@ -124,6 +137,6 @@ void loop()
   if(!connected) {
     return connectToDrone(drone);
   }
-  readDrone(*client);  
+  cloneDrone(*client);  
   delay(20000);
 }
