@@ -1,8 +1,4 @@
 #include <Arduino.h>
-/*
-   Based on Neil Kolban example for IDF: https://github.com/nkolban/esp32-snippets/blob/master/cpp_utils/tests/BLE%20Tests/SampleScan.cpp
-   Ported to Arduino ESP32 by Evandro Copercini
-*/
 
 #include <BLEDevice.h>
 #include <BLEUtils.h>
@@ -14,7 +10,7 @@ using namespace std;
 int scanTime = 5; //In seconds
 BLEScan *pBLEScan;
 const string dronePrefix  = "Swing_";
-vector<BLEAdvertisedDevice> ads;
+vector<BLEAdvertisedDevice> drones;
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
@@ -22,8 +18,8 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
   {
     string deviceName = device.getName();
     if(deviceName.find(dronePrefix) == -1) return;
-        
-    ads.push_back(device);
+
+    drones.push_back(device);
     Serial.printf("Advertised Device: %s \n", device.toString().c_str());
   }
 
@@ -50,29 +46,27 @@ void findBleDevices() {
 }
 void cloneDrone() {
   Serial.println("cloneDrone()");
-  for(auto ad : ads) {
-    Serial.println(ad.getName().c_str());
-  }
+  auto drone = drones[0];
   
-  // BLEServer *pServer = BLEDevice::createServer();
-  // auto pAdvertising = pServer->getAdvertising();
-  // auto fakeDrone = new BLEAdvertisementData();
-  // fakeDrone->setManufacturerData(drone.getManufacturerData());
-  // fakeDrone->setServiceData(drone.getServiceDataUUID(), drone.getServiceData());
-  // fakeDrone->setName("Fake Drone");  
-  // pAdvertising->setAdvertisementData(*fakeDrone);
-  // Serial.println("About to advertise...");
-  // pAdvertising->start();
+  BLEServer *pServer = BLEDevice::createServer();
+  auto pAdvertising = pServer->getAdvertising();
+  auto fakeDrone = new BLEAdvertisementData();
+  fakeDrone->setManufacturerData(drone.getManufacturerData());
+  fakeDrone->setServiceData(drone.getServiceDataUUID(), drone.getServiceData());
+  fakeDrone->setName("Fake Drone");  
+  pAdvertising->setAdvertisementData(*fakeDrone);
+  Serial.println("About to advertise...");
+  pAdvertising->start();
 }
 void loop()
 {
-  if(ads.size() == 0) {
+  if(drones.size() == 0) {
     Serial.println("Scanning for devices...");
     return findBleDevices();
   }
   Serial.printf("%s %d %s", 
                 "Found ",
-                ads.size(),
+               drones.size(),
                 " Swing devices.");
   cloneDrone();
   delay(2000);
