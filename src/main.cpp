@@ -10,12 +10,17 @@ using namespace std;
 int scanTime = 5; //In seconds
 bool connected = false;
 BLEScan *pBLEScan;
+BLEClient* client;
 const string dronePrefix = "Swing_";
 vector<BLEAdvertisedDevice> drones;
 
 void readDrone(BLEClient &client)
-{  
+{ 
+  Serial.println("readDrone");
   auto services = client.getServices();
+  Serial.println("read services");
+  Serial.printf("Num services: %d",services->size());
+
   for (auto entry = services->begin(); entry != services->end(); entry++)
   {
     auto service = entry->second;
@@ -37,11 +42,11 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 
 class MyClientCallback : public BLEClientCallbacks
 {
-  void onConnect(BLEClient *client)
+  void onConnect(BLEClient *c)
   {    
     Serial.println("onConnect");
     connected = true;
-    readDrone(*client);
+    client = c;
   }
 
   void onDisconnect(BLEClient *pclient)
@@ -108,9 +113,7 @@ void loop()
   if (drones.size() == 0)
   {
     Serial.println("Scanning for devices...");
-    return findBleDevices();
-
-    
+    return findBleDevices();    
   }
   Serial.printf("%s %d %s",
                 "Found ",
@@ -120,6 +123,7 @@ void loop()
   auto drone = drones[0];
   if(!connected) {
     return connectToDrone(drone);
-  }  
+  }
+  readDrone(*client);  
   delay(20000);
 }
