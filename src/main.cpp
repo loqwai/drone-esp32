@@ -9,7 +9,7 @@
 using namespace std;
 int scanTime = 5; //In seconds
 BLEScan *pBLEScan;
-const string dronePrefix  = "Swing_";
+const string dronePrefix = "Swing_";
 vector<BLEAdvertisedDevice> drones;
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
@@ -17,12 +17,25 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
   void onResult(BLEAdvertisedDevice device)
   {
     string deviceName = device.getName();
-    if(deviceName.find(dronePrefix) == -1) return;
+    if (deviceName.find(dronePrefix) == -1)
+      return;
 
     drones.push_back(device);
     Serial.printf("Advertised Device: %s \n", device.toString().c_str());
   }
+};
 
+class MyClientCallback : public BLEClientCallbacks
+{
+  void onConnect(BLEClient *pclient)
+  {
+    Serial.println("onConnect");
+  }
+
+  void onDisconnect(BLEClient *pclient)
+  {
+    Serial.println("onDisconnect");
+  }
 };
 
 void setup()
@@ -38,36 +51,59 @@ void setup()
   pBLEScan->setWindow(99); // less or equal setInterval value
 }
 
-void findBleDevices() {
+void findBleDevices()
+{
   // put your main code here, to run repeatedly:
   BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
   Serial.println(foundDevices.getCount());
   pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
 }
-void cloneDrone() {
-  Serial.println("cloneDrone()");
-  auto drone = drones[0];
+void connectToDrone(BLEAdvertisedDevice &drone)
+{
+  BLEClient *pClient = BLEDevice::createClient();
+  Serial.println(" - Created client");
+
+  // Connect to the BLE Server.
+  pClient->setClientCallbacks(new MyClientCallback());
+  pClient->connect(&drone)
   
+
+  // Obtain a reference to the service we are after in the remote BLE server.
+  // BLERemoteService *pRemoteService = pClient->getService(serviceUUID);
+  // if (pRemoteService == nullptr)
+  // {
+  //   Serial.print("Failed to find our service UUID: ");
+  //   Serial.println(serviceUUID.toString().c_str());
+  //   pClient->disconnect();
+  //   return;
+  // }
+}
+
+void cloneDrone(BLEAdvertisedDevice &drone)
+{
+  Serial.println("cloneDrone()");
   BLEServer *pServer = BLEDevice::createServer();
-  auto pAdvertising = pServer->getAdvertising();
-  auto fakeDrone = new BLEAdvertisementData();
-  fakeDrone->setManufacturerData(drone.getManufacturerData());
-  fakeDrone->setServiceData(drone.getServiceDataUUID(), drone.getServiceData());
-  fakeDrone->setName("Fake Drone");  
-  pAdvertising->setAdvertisementData(*fakeDrone);
-  Serial.println("About to advertise...");
-  pAdvertising->start();
+  BLEAdvertising *fakeAd = BLEDevice::getAdvertising();
+  fakeAd->addServiceUUID(drone.getServiceUUID());
+  fakeAd->setScanResponse(true);
+  fakeAd->setMinPreferred(0x06); // functions that help with iPhone connections issue
+  fakeAd->setMinPreferred(0x12);
+  BLEDevice::startAdvertising();
+  
 }
 void loop()
 {
-  if(drones.size() == 0) {
+  if (drones.size() == 0)
+  {
     Serial.println("Scanning for devices...");
     return findBleDevices();
   }
-  Serial.printf("%s %d %s", 
+  Serial.printf("%s %d %s",
                 "Found ",
-               drones.size(),
+                drones.size(),
                 " Swing devices.");
-  cloneDrone();
-  delay(2000);
+                
+  auto drone = drones[0];
+  connectToDrone(drone);
+  delay(20000);
 }
