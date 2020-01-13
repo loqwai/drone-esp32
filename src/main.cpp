@@ -8,10 +8,20 @@
 #include <string.h>
 using namespace std;
 int scanTime = 5; //In seconds
+bool connected = false;
 BLEScan *pBLEScan;
 const string dronePrefix = "Swing_";
 vector<BLEAdvertisedDevice> drones;
 
+void readDrone(BLEClient &client)
+{  
+  auto services = client.getServices();
+  for (auto entry = services->begin(); entry != services->end(); entry++)
+  {
+    auto service = entry->second;
+    Serial.printf("Found service: %s", service->getUUID().toString().c_str());
+  }
+}
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
   void onResult(BLEAdvertisedDevice device)
@@ -27,14 +37,17 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 
 class MyClientCallback : public BLEClientCallbacks
 {
-  void onConnect(BLEClient *pclient)
-  {
+  void onConnect(BLEClient *client)
+  {    
     Serial.println("onConnect");
+    connected = true;
+    readDrone(*client);
   }
 
   void onDisconnect(BLEClient *pclient)
-  {
+  {    
     Serial.println("onDisconnect");
+    connected = false;
   }
 };
 
@@ -64,8 +77,8 @@ void connectToDrone(BLEAdvertisedDevice &drone)
   Serial.println(" - Created client");
 
   // Connect to the BLE Server.
-  pClient->setClientCallbacks(new MyClientCallback());
-  pClient->connect(&drone)
+  pClient->setClientCallbacks(new MyClientCallback());  
+  pClient->connect(&drone);
   
 
   // Obtain a reference to the service we are after in the remote BLE server.
@@ -78,11 +91,10 @@ void connectToDrone(BLEAdvertisedDevice &drone)
   //   return;
   // }
 }
-
+ 
 void cloneDrone(BLEAdvertisedDevice &drone)
 {
   Serial.println("cloneDrone()");
-  BLEServer *pServer = BLEDevice::createServer();
   BLEAdvertising *fakeAd = BLEDevice::getAdvertising();
   fakeAd->addServiceUUID(drone.getServiceUUID());
   fakeAd->setScanResponse(true);
@@ -97,6 +109,8 @@ void loop()
   {
     Serial.println("Scanning for devices...");
     return findBleDevices();
+
+    
   }
   Serial.printf("%s %d %s",
                 "Found ",
@@ -104,6 +118,8 @@ void loop()
                 " Swing devices.");
                 
   auto drone = drones[0];
-  connectToDrone(drone);
+  if(!connected) {
+    return connectToDrone(drone);
+  }  
   delay(20000);
 }
