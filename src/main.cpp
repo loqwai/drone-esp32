@@ -12,60 +12,12 @@ bool connected = false;
 BLEScan *pBLEScan;
 BLEClient* client;
 const string dronePrefix = "Swing_";
-vector<BLEAdvertisedDevice> drones;
-
-void cloneService(BLEServer *server, BLERemoteService *remote){
-  BLEService *service = server->createService(remote->getUUID()); 
-  BLEAdvertising *ad = BLEDevice::getAdvertising();
-  ad->addServiceUUID(remote->getUUID());
-  ad->setScanResponse(true);
-  ad->setMinPreferred(0x06);  // functions that help with iPhone connections issue
-  ad->setMinPreferred(0x12); 
-  service->start();
-}
-
-void cloneDrone(BLEClient &client)
-{    
-  Serial.println("cloneDrone");
-  BLEServer *server = BLEDevice::createServer();
-  auto services = client.getServices();
-  Serial.println("read services");
-  Serial.printf("Num services: %d",services->size());
-
-  for (auto entry = services->begin(); entry != services->end(); entry++)
-  {
-    auto service = entry->second;    
-    Serial.printf("Found service: %s", service->getUUID().toString().c_str());
-    cloneService(server, service);
-  }
-  BLEDevice::startAdvertising();
-}
+vector<BLEAdvertisedDevice> devices;
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
   void onResult(BLEAdvertisedDevice device)
   {
-    string deviceName = device.getName();
-    if (deviceName.find(dronePrefix) == -1)
-      return;
-
-    drones.push_back(device);
-    Serial.printf("Advertised Device: %s \n", device.toString().c_str());
-  }
-};
-
-class MyClientCallback : public BLEClientCallbacks
-{
-  void onConnect(BLEClient *c)
-  {    
-    Serial.println("onConnect");
-    connected = true;
-    client = c;
-  }
-
-  void onDisconnect(BLEClient *pclient)
-  {    
-    Serial.println("onDisconnect");
-    connected = false;
+    devices.push_back(device);    
   }
 };
 
@@ -89,54 +41,17 @@ void findBleDevices()
   Serial.println(foundDevices.getCount());
   pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
 }
-void connectToDrone(BLEAdvertisedDevice &drone)
-{
-  BLEClient *pClient = BLEDevice::createClient();
-  Serial.println(" - Created client");
 
-  // Connect to the BLE Server.
-  pClient->setClientCallbacks(new MyClientCallback());  
-  pClient->connect(&drone);
-  
-
-  // Obtain a reference to the service we are after in the remote BLE server.
-  // BLERemoteService *pRemoteService = pClient->getService(serviceUUID);
-  // if (pRemoteService == nullptr)
-  // {
-  //   Serial.print("Failed to find our service UUID: ");
-  //   Serial.println(serviceUUID.toString().c_str());
-  //   pClient->disconnect();
-  //   return;
-  // }
-}
- 
-void startClone(BLEAdvertisedDevice &drone)
-{
-  Serial.println("cloneDrone()");
-  BLEAdvertising *fakeAd = BLEDevice::getAdvertising();
-  fakeAd->addServiceUUID(drone.getServiceUUID());
-  fakeAd->setScanResponse(true);
-  fakeAd->setMinPreferred(0x06); // functions that help with iPhone connections issue
-  fakeAd->setMinPreferred(0x12);
-  BLEDevice::startAdvertising();
-  
-}
 void loop()
-{
-  if (drones.size() == 0)
-  {
-    Serial.println("Scanning for devices...");
-    return findBleDevices();    
-  }
+{  
+  Serial.println("Scanning for devices...");
+  findBleDevices();     
   Serial.printf("%s %d %s",
                 "Found ",
-                drones.size(),
-                " Swing devices.");
-                
-  auto drone = drones[0];
-  if(!connected) {
-    return connectToDrone(drone);
+                devices.size(),
+                "devices.");
+  for(auto device : devices) {
+    Serial.printf("%s, rssi: %d, micros: %d\n", device.toString().c_str(), device.getRSSI(), micros());
   }
-  cloneDrone(*client);  
-  delay(20000);
+  
 }
