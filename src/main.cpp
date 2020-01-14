@@ -4,27 +4,20 @@
 #include <BLEAdvertisedDevice.h>
 #include <BLEAdvertising.h>
 #include <string.h>
-#include <WiFi.h>
-#include <PubSubClient.h>
+#include <WifiEspNowBroadcast.h>
 using namespace std;
 
-// Update these with values suitable for your network.
-WiFiClient espClient;
-
-PubSubClient client(espClient);
+//wifi
+#define GROUP_NAME "DroneDimension"
 
 //ble
 #define SCAN_TIME 1
+#define MESSAGE_SIZE WIFIESPNOW_MAXMSGLEN
 BLEScan *pBLEScan;
 vector<BLEAdvertisedDevice> devices;
 
-//wifi
-#define ssid "ROBOT-WASTELAND"
-#define password "lemonade"
-#define mqtt_server "10.0.0.124"
-
 //mqtt
-char message[256];
+char message[MESSAGE_SIZE];
 String id = WiFi.macAddress();
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice device)
@@ -33,52 +26,31 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
   }
 };
 
-void scanNetworks() {
- 
-  int numberOfNetworks = WiFi.scanNetworks();
- 
-  Serial.print("Number of networks found: ");
-  Serial.println(numberOfNetworks);
- 
-  for (int i = 0; i < numberOfNetworks; i++) {
- 
-    Serial.print("Network name: ");
-    Serial.println(WiFi.SSID(i));
- 
-    Serial.print("Signal strength: ");
-    Serial.println(WiFi.RSSI(i));
- 
-    Serial.print("MAC address: ");
-    Serial.println(WiFi.BSSIDstr(i));
- 
-    Serial.print("Encryption type: ");   
-    Serial.println("-----------------------");
- 
+void wifiSetup() {
+  WiFi.persistent(false);
+  bool ok = WifiEspNowBroadcast.begin(GROUP_NAME);
+  if (!ok) {
+    Serial.println("WifiEspNowBroadcast.begin() failed");
+    ESP.restart();
   }
+
+  // WifiEspNowBroadcast.onReceive(processRx, nullptr);
 }
-
-void setup()
-{
-  Serial.begin(9600);
-  Serial.println("Setting up...");
-  Serial.println("\tWifi");
-  scanNetworks();
-  
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(WiFi.status());
-    Serial.print(".");
-  }
-  Serial.println("\tBLE");
-
+void bleSetup() {
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
   pBLEScan->setInterval(10);
   pBLEScan->setWindow(9); // less or equal setInterval value
-  
+}
+
+void setup()
+{
+  Serial.begin(9600);
+  Serial.println("Setting up...");
+  wifiSetup(); 
+  bleSetup();
 }
 
 void findBleDevices()
@@ -91,6 +63,8 @@ void findBleDevices()
 
 void sendMessage() {
   Serial.println(message);
+  auto ok = WifiEspNowBroadcast.send(reinterpret_cast<const uint8_t*>(message), MESSAGE_SIZE);
+  Serial.println(ok);
 }
 
 void loop()
