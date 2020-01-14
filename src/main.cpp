@@ -76,16 +76,18 @@ void findBleDevices()
 int printPeers() {
   WifiEspNowPeerInfo peers[MAX_PEERS];
   int nPeers = std::min(WifiEspNow.listPeers(peers, MAX_PEERS), MAX_PEERS);
-  if(nPeers == 0) return 0; 
+  if(nPeers == 0) return 0;
+  if(nPeers == oldPeerCount) return nPeers;
+
   for (int i = 0; i < nPeers; ++i) {
-    // Heltec.display->drawStringMaxWidth(0,25*i, 25, peers[i]);
     Serial.printf(" %02X:%02X:%02X:%02X:%02X:%02X\n", peers[i].mac[0], peers[i].mac[1], peers[i].mac[2], peers[i].mac[3], peers[i].mac[4], peers[i].mac[5]);
     Serial.println();
   }
+  oldPeerCount = nPeers;
   return nPeers;
 }
 void sendMessage() {
-  // WifiEspNowBroadcast.send(reinterpret_cast<const uint8_t*>(message), MESSAGE_SIZE);
+  WifiEspNowBroadcast.send(reinterpret_cast<const uint8_t*>(message), MESSAGE_SIZE);
 }
 
 void loop()
