@@ -10,9 +10,9 @@ using namespace std;
 int scanTime = 5; //In seconds
 bool connected = false;
 BLEScan *pBLEScan;
-BLEClient* client;
-const string dronePrefix = "Swing_";
 vector<BLEAdvertisedDevice> devices;
+uint8_t mac[6];
+char message[256];
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
   void onResult(BLEAdvertisedDevice device)
@@ -23,6 +23,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 
 void setup()
 {
+  esp_efuse_mac_get_default(mac);
   Serial.begin(9600);
   Serial.println("Scanning...");
 
@@ -30,8 +31,8 @@ void setup()
   pBLEScan = BLEDevice::getScan(); //create new scan
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
-  pBLEScan->setInterval(100);
-  pBLEScan->setWindow(99); // less or equal setInterval value
+  pBLEScan->setInterval(10);
+  pBLEScan->setWindow(9); // less or equal setInterval value
 }
 
 void findBleDevices()
@@ -40,6 +41,10 @@ void findBleDevices()
   BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
   Serial.println(foundDevices.getCount());
   pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
+}
+
+void sendMessage() {
+  Serial.println(message);
 }
 
 void loop()
@@ -51,7 +56,9 @@ void loop()
                 devices.size(),
                 "devices.");
   for(auto device : devices) {
-    Serial.printf("%s, rssi: %d, micros: %d\n", device.toString().c_str(), device.getRSSI(), micros());
+
+    snprintf(message, sizeof(message), "%s, rssi: %d, micros: %d, id: %#6x", device.toString().c_str(), device.getRSSI(), micros(), mac);
+    sendMessage();
   }
   
 }
