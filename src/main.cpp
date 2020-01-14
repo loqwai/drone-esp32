@@ -7,14 +7,13 @@
 #include <BLEAdvertising.h>
 #include <string.h>
 using namespace std;
-int scanTime = 5; //In seconds
-bool connected = false;
+
+#define SCAN_TIME 1
 BLEScan *pBLEScan;
 vector<BLEAdvertisedDevice> devices;
 uint8_t mac[6];
 char message[256];
-class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
-{
+class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice device)
   {
     devices.push_back(device);    
@@ -38,7 +37,7 @@ void setup()
 void findBleDevices()
 {
   // put your main code here, to run repeatedly:
-  BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
+  BLEScanResults foundDevices = pBLEScan->start(SCAN_TIME, false);
   Serial.println(foundDevices.getCount());
   pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
 }
@@ -60,5 +59,5 @@ void loop()
     snprintf(message, sizeof(message), "%s, rssi: %d, micros: %d, id: %#6x", device.toString().c_str(), device.getRSSI(), micros(), mac);
     sendMessage();
   }
-  
+  devices.clear();
 }
